@@ -35,7 +35,7 @@ type CallReply struct {
 }
 
 type Error struct {
-	Name       string
+	Name string
 }
 
 func (e *Error) Error() string {
@@ -63,7 +63,7 @@ func (c *connection) ReceiveMessage(reply interface{}) error {
 
 func (c *connection) Call(method string, parameters, reply_parameters interface{}) error {
 	if parameters == nil {
-		var empty struct {}
+		var empty struct{}
 		parameters = empty
 	}
 

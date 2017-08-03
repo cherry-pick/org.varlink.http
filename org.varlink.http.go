@@ -47,12 +47,12 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodGet:
 		var interfaces struct {
 			Interfaces []struct {
-				Name    string `json:"name"`
-				Address string `json:"address"`
+				Interface string `json:"interface"`
+				Address   string `json:"address"`
 			} `json:"interfaces"`
 		}
 
-		err := varlink.Call("org.varlink.activator.GetInterfaces", nil, &interfaces)
+		err := varlink.Call("org.varlink.resolver.GetInterfaces", nil, &interfaces)
 		if err != nil {
 			http.Error(writer, "Not found", http.StatusNotFound)
 			return
