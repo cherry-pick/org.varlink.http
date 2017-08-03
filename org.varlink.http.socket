@@ -1,0 +1,8 @@
+[Unit]
+Description=Varlink HTTP Proxy socket
+
+[Socket]
+ListenStream=0.0.0.0:56565
+
+[Install]
+WantedBy=sockets.target

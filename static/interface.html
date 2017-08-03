@@ -1,0 +1,24 @@
+<html>
+    <head>
+        <title>{{.Name}}</title>
+        <link rel="stylesheet" href="/varlink.css" type="text/css">
+    </head>
+    <body>
+        {{$interface := .Name}}
+
+        <h1>
+            <a href="/">Services</a>
+            <a href="/interface/{{.Name}}" alt="interface">{{.Name}}</a>
+            <a class="link-bar" href="/interface/{{.Name}}.varlink"> .varlink</a>
+        </h1>
+
+        {{if .Description}}<p>{{.Description}}</p>{{end}}
+
+        <dl>
+            {{range .Methods -}}
+            <dt><code><a href="/interface/{{$interface}}/{{.Name}}">{{.Name}}()</a></code></dt>
+            {{if .Description}}<dd>{{.Description}}</dd>{{end}}
+            {{end}}
+        </dl>
+    </body>
+</html>

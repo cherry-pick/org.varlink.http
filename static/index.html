@@ -1,0 +1,15 @@
+<html>
+    <head>
+        <title>Services</title>
+        <link rel="stylesheet" href="/varlink.css" type="text/css">
+    </head>
+    <body>
+        <h1>
+          <a href="/">Services</a>
+        </h1>
+        <ul>{{range .Interfaces}}
+            <li><a href="/interface/{{.Name}}">{{.Name}}</a></li>
+        {{end}}</ul>
+    </body>
+</html>
+

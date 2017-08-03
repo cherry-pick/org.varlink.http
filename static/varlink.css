@@ -1,0 +1,147 @@
+
+* {
+    margin: 0;
+}
+
+html {
+    font-family: Serif;
+    font-size: 16px;
+}
+
+body {
+    margin: 0 auto;
+    max-width: 50em;
+    line-height: 1.5em;
+
+    color: #2d2d2d;
+}
+
+p {
+    line-height: 1.5em;
+    margin-bottom: 1.5em;
+}
+
+h1 {
+    font-family: Sans;
+    font-size: 1.2em;
+    line-height: 1.2em;
+
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+h1 a {
+    display: inline-block;
+    text-align: center;
+    padding: 0.5em 1em;
+    text-decoration: none;
+    border-radius: 100px;
+    color: white;
+    background-color: #3399dd;
+}
+
+h1 a:hover {
+    background-color: #44aaee;
+}
+
+h1 a:active {
+    background-color: #2288cc;
+}
+
+a.link-bar {
+    background-color: #cccccc;
+}
+
+a.link-bar:hover {
+    background-color: #dddddd;
+}
+
+a.link-bar:active {
+    background-color: #bbbbbb;
+}
+
+ul {
+    padding: 1em;
+}
+
+li a {
+    text-decoration: none;
+    font-size: 1.2em;
+    color: #404040;
+}
+
+li a:hover {
+    color: #808080;
+}
+
+li a:active {
+    color: #101010;
+}
+
+dl {
+    margin-bottom: 1em;
+}
+
+dt {
+    margin-bottom: 0.5em;
+}
+
+dd {
+    margin-top: 0;
+    margin-bottom: 2em;
+    margin-left: 1em;
+    margin-right: 0;
+}
+
+textarea#parameters {
+    width: 100%;
+    height: 240px;
+    font-family: Monospace;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    margin-bottom: 1.5em;
+    outline: none;
+}
+
+textarea#parameters.error {
+    border: 1px solid #c44;
+}
+
+a.submit {
+    display: inline-block;
+    min-width: 10em;
+    text-align: center;
+    font-family: Sans;
+    padding: 0.5em 1em;
+    text-decoration: none;
+    border-radius: 100px;
+    font-weight: 700;
+    color: white;
+    background-color: #dd9933;
+    margin-bottom: 1.5em;
+}
+
+a.submit:hover {
+    background-color: #eeaa44;
+}
+
+a.submit:active {
+    background-color: #cc8822;
+}
+
+span.error {
+    color: #c44;
+    font-weight: bold;
+}
+
+.json-key {
+    color: #22936E;
+}
+
+.json-value {
+    color: #3B349A;
+}
+
+.json-punctuation {
+    color: #888;
+}

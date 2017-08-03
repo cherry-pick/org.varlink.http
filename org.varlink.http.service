@@ -1,0 +1,11 @@
+[Unit]
+Description=Varlink HTTP Proxy
+Requires=org.varlink.http.socket
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/org.varlink.http 0.0.0.0:56565
+
+[Install]
+WantedBy=multi-user.target
+Also=org.varlink.http.socket

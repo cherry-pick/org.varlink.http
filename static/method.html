@@ -1,0 +1,136 @@
+<html>
+    <head>
+        <title>{{.Interface.Name}}.{{.Method.Name}}</title>
+        <link rel="stylesheet" href="/varlink.css" type="text/css">
+    </head>
+    <body>
+        <h1>
+            <a href="/">Services</a>
+            <a href="/interface/{{.Interface.Name}}" alt="interface">{{.Interface.Name}}</a>
+            <a href="/interface/{{.Interface.Name}}/{{.Method.Name}}" alt="interface">{{.Method.Name}}</a>
+        </h1>
+        {{if .Method.Description}}<p>{{.Method.Description}}</p>{{end}}
+
+        <textarea id="parameters" spellcheck=false autocomplete=off autofocus>{{.DefaultInArgs}}</textarea>
+        <a class="submit" href="javascript:;" onclick="onCallClick()">Call</a>
+
+        <div id="results" />
+
+        <script>
+            function jsonText(text, className) {
+                var n = document.createElement('span');
+                if (className)
+                    n.classList.add(className);
+                n.appendChild(document.createTextNode(text))
+                return n
+            }
+
+            function htmlify(pre, value, indent) {
+                indent = indent || ''
+
+                if (value && Array.isArray(value)) {
+                    pre.appendChild(jsonText('[', 'json-punctuation'));
+                    pre.appendChild(jsonText('\n'));
+                    value.forEach(function (element, index) {
+                        if (index > 0) {
+                            pre.appendChild(jsonText(',', 'json-punctuation'));
+                            pre.appendChild(jsonText('\n'));
+                        }
+                        pre.appendChild(jsonText(indent + '  '));
+                        htmlify(pre, element, indent + '  ');
+                    });
+                    pre.appendChild(jsonText('\n' + indent));
+                    pre.appendChild(jsonText(']', 'json-punctuation'));
+
+                } else if (value && typeof value === 'object') {
+                    pre.appendChild(jsonText('{', 'json-punctuation'));
+                    pre.appendChild(jsonText('\n'));
+                    Object.keys(value).forEach(function (key, index) {
+                        if (index > 0) {
+                            pre.appendChild(jsonText(',', 'json-punctuation'));
+                            pre.appendChild(jsonText('\n'));
+                        }
+                        pre.appendChild(jsonText(indent + '  '));
+                        pre.appendChild(jsonText('"' + key + '"', 'json-key'));
+                        pre.appendChild(jsonText(':', 'json-punctuation'));
+                        pre.appendChild(jsonText(' '));
+                        htmlify(pre, value[key], indent + '  ');
+                    });
+                    pre.appendChild(jsonText('\n' + indent));
+                    pre.appendChild(jsonText('}', 'json-punctuation'));
+
+                } else if (typeof value === 'string') {
+                    pre.appendChild(jsonText('"' + value + '"', 'json-value'));
+                } else {
+                    pre.appendChild(jsonText(String(value), 'json-value'));
+                }
+            }
+
+            function clearResults() {
+                document.getElementById('results').innerHTML = '';
+            }
+
+            function appendError(name, data) {
+                var error = document.createElement('pre');
+                var span = document.createElement('span');
+                span.classList.add('error');
+                span.appendChild(document.createTextNode(name));
+                error.appendChild(span);
+                if (data)
+                    error.appendChild(data);
+                document.getElementById('results').appendChild(error);
+            }
+
+            function onReply() {
+                try {
+                    var message = JSON.parse(this.responseText);
+                } catch (err) {
+                    appendError(err.name);
+                    return;
+                }
+
+                if (message.error) {
+                    var pre
+                    if (message.parameters) {
+                        pre = document.createElement('pre');
+                        htmlify(pre, message.parameters);
+                    }
+                    appendError(message.error, pre);
+                    return;
+                }
+
+                pre = document.createElement('pre');
+                htmlify(pre, message.parameters);
+                document.getElementById('results').appendChild(pre);
+            }
+
+            function onCallClick() {
+                var textarea = document.querySelector('#parameters');
+
+                clearResults();
+
+                try {
+                    parms = JSON.parse(textarea.value.trim() || '{}');
+                } catch (err) {
+                    textarea.classList.add('error');
+                    appendError(err.name);
+                    textarea.addEventListener('input', function (event) {
+                        textarea.classList.remove('error');
+                        event.target.removeEventListener(event.type, parameters.callee);
+                    });
+                    return;
+                }
+
+                var req = new XMLHttpRequest();
+
+                req.addEventListener('load', onReply);
+                req.open("POST", '/');
+                req.setRequestHeader("Accept", "application/json");
+                req.send(JSON.stringify({
+                    method: '{{.Interface.Name}}' + "." + '{{.Method.Name}}',
+                    parameters: parms
+                }));
+            }
+        </script>
+    </body>
+</html>
