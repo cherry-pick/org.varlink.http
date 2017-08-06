@@ -107,7 +107,7 @@ func (c *connection) GetInfo() (*Service, error) {
 
 func (c *connection) GetInterface(name string) (*Interface, error) {
 	type GetInterfaceArgs struct {
-		Name string `json:"name"`
+		Name string `json:"interface"`
 	}
 	type GetInterfaceReply struct {
 		InterfaceString string `json:"interfacestring"`
