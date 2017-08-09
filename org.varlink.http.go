@@ -155,7 +155,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	}
 	defer connection.Close()
 
-	iface, err := connection.GetInterface(name)
+	iface, err := connection.GetInterfaceDescription(name)
 	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())

@@ -14,7 +14,7 @@ type Connection interface {
 	SendMessage(message interface{}) error
 	ReceiveMessage(reply interface{}) error
 	Call(method string, args interface{}, reply interface{}) error
-	GetInterface(name string) (*Interface, error)
+	GetInterfaceDescription(name string) (*Interface, error)
 	Close() error
 }
 
@@ -105,16 +105,16 @@ func (c *connection) GetInfo() (*Service, error) {
 	return &service, nil
 }
 
-func (c *connection) GetInterface(name string) (*Interface, error) {
-	type GetInterfaceArgs struct {
+func (c *connection) GetInterfaceDescription(name string) (*Interface, error) {
+	type GetInterfaceDescriptionArgs struct {
 		Name string `json:"interface"`
 	}
-	type GetInterfaceReply struct {
-		InterfaceString string `json:"interfacestring"`
+	type GetInterfaceDescriptionReply struct {
+		InterfaceString string `json:"description"`
 	}
 
-	var reply GetInterfaceReply
-	err := c.Call("org.varlink.service.GetInterface", GetInterfaceArgs{name}, &reply)
+	var reply GetInterfaceDescriptionReply
+	err := c.Call("org.varlink.service.GetInterfaceDescription", GetInterfaceDescriptionArgs{name}, &reply)
 	if err != nil {
 		return nil, err
 	}
