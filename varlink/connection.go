@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const ResolverAddress = "unix:/run/org.varlink.resolver"
+const ResolverAddress = "/run/org.varlink.resolver"
 
 type Connection interface {
 	SendMessage(message interface{}) error
@@ -134,21 +134,9 @@ func (c *connection) Close() error {
 func Dial(address string) (Connection, error) {
 	var err error
 
-	parts := strings.Split(address, ":")
-	if len(parts) != 2 {
-		return nil, errors.New("invalid address: " + address)
-	}
-
-	transport := parts[0]
-	path := parts[1]
-
-	if transport != "unix" {
-		return nil, errors.New("unsupported transport: " + transport)
-	}
-
 	c := &connection{}
 
-	c.conn, err = net.Dial(transport, path)
+	c.conn, err = net.Dial("unix", address)
 	if err != nil {
 		return nil, err
 	}
