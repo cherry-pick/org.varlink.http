@@ -52,7 +52,7 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 			} `json:"interfaces"`
 		}
 
-		err := varlink.Call("org.varlink.resolver.GetInterfaces", nil, &interfaces)
+		err := varlink.Call("org.varlink.resolver.GetInfo", nil, &interfaces)
 		if err != nil {
 			http.Error(writer, "Not found", http.StatusNotFound)
 			return
