@@ -1,12 +1,26 @@
 <html>
     <head>
-        <title>Services</title>
+        <title>Interfaces</title>
         <link rel="stylesheet" href="/varlink.css" type="text/css">
     </head>
     <body>
         <h1>
-          <a href="/">Services</a>
+          <a href="/">Interfaces</a>
         </h1>
+        <table>
+          <tr>
+            <td>Vendor:</td><td>{{.Vendor}}</td>
+          </tr>
+          <tr>
+            <td>Product:</td><td>{{.Product}}</td>
+          </tr>
+          <tr>
+            <td>Version:</td><td>{{.Version}}</td>
+          </tr>
+          <tr>
+            <td>URL:</td><td><a href="{{.URL}}">{{.URL}}</a></td>
+          </tr>
+        </table>
         <ul>{{range .Interfaces}}
             <li><a href="/interface/{{.Interface}}">{{.Interface}}</a></li>
         {{end}}</ul>

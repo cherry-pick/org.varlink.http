@@ -46,6 +46,10 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodGet:
 		var interfaces struct {
+			Vendor string `json:"vendor"`
+			Product string `json:"product"`
+			Version string `json:"version"`
+			URL string `json:"url"`
 			Interfaces []struct {
 				Interface string `json:"interface"`
 				Address   string `json:"address"`
