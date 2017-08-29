@@ -1,13 +1,10 @@
-%define build_date %(date +"%%a %%b %%d %%Y")
-%define build_timestamp %(date +"%%Y%%m%%d.%%H%M%%S")
-
 Name:           org.varlink.http
 Version:        1
-Release:        %{build_timestamp}%{?dist}
+Release:        1%{?dist}
 Summary:        Varlink HTTP Proxy
 License:        ASL2.0
-URL:            https://github.com/varlink/org.varlink.http
-Source0:        https://github.com/varlink/org.varlink.http/archive/v%{version}.tar.gz
+URL:            https://github.com/varlink/%{name}
+Source0:        https://github.com/varlink/%{name}/archive/%{name}-%{version}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  go
 Requires:       org.varlink.resolver
@@ -54,5 +51,5 @@ install -m 0644 static/* -t %{buildroot}%{_datadir}/%{name}
 %{_datadir}/%{name}/varlink.css
 
 %changelog
-* %{build_date} <info@varlink.org> %{version}-%{build_timestamp}
-- %{name} %{version}
+* Tue Aug 29 2017 <info@varlink.org> 1-1
+- org.varlink.http 1
