@@ -50,10 +50,7 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 			Product string `json:"product"`
 			Version string `json:"version"`
 			URL string `json:"url"`
-			Interfaces []struct {
-				Interface string `json:"interface"`
-				Address   string `json:"address"`
-			} `json:"interfaces"`
+			Interfaces []string `json:"interfaces"`
 		}
 
 		err := varlink.Call("org.varlink.resolver.GetInfo", nil, &interfaces)

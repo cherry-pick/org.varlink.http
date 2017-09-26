@@ -21,8 +21,8 @@
             <td>URL:</td><td><a href="{{.URL}}">{{.URL}}</a></td>
           </tr>
         </table>
-        <ul>{{range .Interfaces}}
-            <li><a href="/interface/{{.Interface}}">{{.Interface}}</a></li>
+        <ul>{{range $interface := .Interfaces}}
+            <li><a href="/interface/{{$interface}}">{{$interface}}</a></li>
         {{end}}</ul>
     </body>
 </html>
