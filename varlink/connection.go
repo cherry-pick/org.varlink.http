@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const ResolverAddress = "/run/org.varlink.resolver"
+const ResolverAddress = "unix:/run/org.varlink.resolver"
 
 type Connection interface {
 	SendMessage(message interface{}) error
@@ -136,7 +136,9 @@ func Dial(address string) (Connection, error) {
 
 	c := &connection{}
 
-	c.conn, err = net.Dial("unix", address)
+	path := strings.TrimPrefix(address, "unix:")
+
+	c.conn, err = net.Dial("unix", path)
 	if err != nil {
 		return nil, err
 	}
