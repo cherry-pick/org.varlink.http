@@ -137,8 +137,9 @@ func Dial(address string) (Connection, error) {
 	c := &connection{}
 
 	path := strings.TrimPrefix(address, "unix:")
+	parms := strings.Split(path, ";")
 
-	c.conn, err = net.Dial("unix", path)
+	c.conn, err = net.Dial("unix", parms[0])
 	if err != nil {
 		return nil, err
 	}
