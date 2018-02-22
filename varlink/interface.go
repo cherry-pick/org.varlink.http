@@ -53,7 +53,6 @@ type Method struct {
 	Description string
 	In          *Type
 	Out         *Type
-	Monitor     bool
 }
 
 type ErrorType struct {
@@ -353,10 +352,9 @@ func (p *parser) readInterface() *Interface {
 			p.advance()
 			one := p.next()
 			two := p.next()
-			if (one != '-' && one != '=') || two != '>' {
+			if (one != '-') || two != '>' {
 				return nil
 			}
-			method.Monitor = one == '='
 
 			p.advance()
 			method.Out = p.readType()
@@ -517,11 +515,7 @@ func (i *Interface) String() string {
 			b.WriteString("method ")
 			b.WriteString(method.Name)
 			writeType(&b, method.In, false)
-			if method.Monitor {
-				b.WriteString(" => ")
-			} else {
-				b.WriteString(" -> ")
-			}
+			b.WriteString(" -> ")
 			writeType(&b, method.Out, false)
 
 		case *ErrorType:
