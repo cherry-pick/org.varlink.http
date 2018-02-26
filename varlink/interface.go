@@ -14,6 +14,7 @@ const (
 	String
 	Array
 	Struct
+	Enum
 	Alias
 )
 
@@ -91,8 +92,10 @@ func (p *parser) advance() bool {
 		if char == '\n' {
 			p.lineStart = p.position
 			p.lastComment.Reset()
+
 		} else if char == ' ' {
 			// ignore
+
 		} else if char == '#' {
 			p.next()
 			start := p.position
@@ -108,6 +111,7 @@ func (p *parser) advance() bool {
 			}
 			p.lastComment.WriteString(p.input[start:p.position])
 			p.next()
+
 		} else {
 			p.backup()
 			break
@@ -228,14 +232,22 @@ func (p *parser) readStructType() *Type {
 			}
 
 			p.advance()
-			if p.next() != ':' {
-				return nil
-			}
 
-			p.advance()
-			field.Type = p.readType()
-			if field.Type == nil {
-				return nil
+			// Enums have no types, they are just a list of names
+			if p.next() == ':' {
+				if t.Kind == Enum {
+					return nil
+				}
+
+				p.advance()
+				field.Type = p.readType()
+				if field.Type == nil {
+					return nil
+				}
+
+			} else {
+				t.Kind = Enum
+				p.backup()
 			}
 
 			t.Fields = append(t.Fields, field)
@@ -257,6 +269,7 @@ func (p *parser) readStructType() *Type {
 
 func (p *parser) readType() *Type {
 	var t *Type
+
 	if keyword := p.readKeyword(); keyword != "" {
 		switch keyword {
 		case "bool":
@@ -271,8 +284,10 @@ func (p *parser) readType() *Type {
 		case "string":
 			t = &Type{Kind: String}
 		}
+
 	} else if name := p.readTypeName(); name != "" {
 		t = &Type{Kind: Alias, Alias: name}
+
 	} else if t = p.readStructType(); t == nil {
 		return nil
 	}
@@ -282,6 +297,7 @@ func (p *parser) readType() *Type {
 			return nil
 		}
 		t = &Type{Kind: Array, ElementType: t}
+
 	} else {
 		p.backup()
 	}

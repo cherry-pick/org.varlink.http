@@ -95,16 +95,6 @@ func (c *connection) Call(method string, parameters, reply_parameters interface{
 	return nil
 }
 
-func (c *connection) GetInfo() (*Service, error) {
-	var service Service
-	err := c.Call("org.varlink.service.GetInfo", nil, &service)
-	if err != nil {
-		return nil, err
-	}
-
-	return &service, nil
-}
-
 func (c *connection) GetInterfaceDescription(name string) (*Interface, error) {
 	type GetInterfaceDescriptionArgs struct {
 		Name string `json:"interface"`
