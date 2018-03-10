@@ -12,7 +12,8 @@ import (
 	"path"
 	"strings"
 
-	"./varlink"
+	"github.com/varlink/org.varlink.http/varlink"
+	"github.com/varlink/org.varlink.http/varlink/idl"
 )
 
 var datadir string = "static"
@@ -46,10 +47,10 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodGet:
 		var interfaces struct {
-			Vendor string `json:"vendor"`
-			Product string `json:"product"`
-			Version string `json:"version"`
-			URL string `json:"url"`
+			Vendor     string   `json:"vendor"`
+			Product    string   `json:"product"`
+			Version    string   `json:"version"`
+			URL        string   `json:"url"`
 			Interfaces []string `json:"interfaces"`
 		}
 
@@ -125,6 +126,41 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
+func defaultValue(i *idl.IDL, t *idl.Type) interface{} {
+	switch t.Kind {
+	case idl.TypeBool:
+		return false
+
+	case idl.TypeInt:
+		return 0
+
+	case idl.TypeFloat:
+		return 0.0
+
+	case idl.TypeString:
+		return ""
+
+	case idl.TypeArray:
+		return make([]interface{}, 0)
+
+	case idl.TypeStruct:
+		v := make(map[string]interface{})
+		for _, field := range t.Fields {
+			v[field.Name] = defaultValue(i, field.Type)
+		}
+		return v
+
+	case idl.TypeAlias:
+		alias := i.Aliases[t.Alias]
+		if alias == nil {
+			return nil
+		}
+		return defaultValue(i, alias.Type)
+	}
+
+	return nil
+}
+
 func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	if request.Method != http.MethodGet {
 		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
@@ -156,7 +192,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	}
 	defer connection.Close()
 
-	iface, err := connection.GetInterfaceDescription(name)
+	idl, err := connection.GetInterfaceDescription(name)
 	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())
@@ -167,18 +203,18 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	case 1:
 		if strings.HasSuffix(parts[0], ".varlink") {
 			writer.Header().Set("Content-Type", "text/plain")
-			io.WriteString(writer, iface.String())
+			io.WriteString(writer, idl.Description)
 		} else {
-			templates.ExecuteTemplate(writer, "interface.html", iface)
+			templates.ExecuteTemplate(writer, "interface.html", idl)
 		}
 	case 2:
-		method := iface.Methods[parts[1]]
+		method := idl.Methods[parts[1]]
 		if method == nil {
 			http.Error(writer, "Method does not exist: "+parts[1], http.StatusNotFound)
 			return
 		}
 
-		value, err := json.MarshalIndent(iface.DefaultValue(method.In), "", "  ")
+		value, err := json.MarshalIndent(defaultValue(idl, method.In), "", "  ")
 		if err != nil {
 			http.Error(writer, "Internal server error", http.StatusInternalServerError)
 			log.Print(err.Error())
@@ -186,7 +222,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 		}
 
 		templates.ExecuteTemplate(writer, "method.html", map[string]interface{}{
-			"Interface":     iface,
+			"Interface":     idl,
 			"Method":        method,
 			"DefaultInArgs": string(value),
 		})

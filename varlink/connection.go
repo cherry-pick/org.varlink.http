@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net"
 	"strings"
+
+	"github.com/varlink/org.varlink.http/varlink/idl"
 )
 
 const ResolverAddress = "unix:/run/org.varlink.resolver"
@@ -14,7 +16,7 @@ type Connection interface {
 	SendMessage(message interface{}) error
 	ReceiveMessage(reply interface{}) error
 	Call(method string, args interface{}, reply interface{}) error
-	GetInterfaceDescription(name string) (*Interface, error)
+	GetInterfaceDescription(name string) (*idl.IDL, error)
 	Close() error
 }
 
@@ -95,7 +97,7 @@ func (c *connection) Call(method string, parameters, reply_parameters interface{
 	return nil
 }
 
-func (c *connection) GetInterfaceDescription(name string) (*Interface, error) {
+func (c *connection) GetInterfaceDescription(name string) (*idl.IDL, error) {
 	type GetInterfaceDescriptionArgs struct {
 		Name string `json:"interface"`
 	}
@@ -109,9 +111,9 @@ func (c *connection) GetInterfaceDescription(name string) (*Interface, error) {
 		return nil, err
 	}
 
-	iface := NewInterface(reply.InterfaceString)
-	if iface == nil {
-		return nil, errors.New("Received invalid interface")
+	iface, err := idl.New(reply.InterfaceString)
+	if err != nil {
+		return nil, err
 	}
 
 	return iface, nil

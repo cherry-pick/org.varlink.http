@@ -9,7 +9,7 @@
             <a href="/interface/{{.Interface.Name}}" alt="interface">{{.Interface.Name}}</a>
             <a href="/interface/{{.Interface.Name}}/{{.Method.Name}}" alt="interface">{{.Method.Name}}</a>
         </h1>
-        {{if .Method.Description}}<p>{{.Method.Description}}</p>{{end}}
+        {{if .Method.Doc}}<p>{{.Method.Doc}}</p>{{end}}
 
         <textarea id="parameters" spellcheck=false autocomplete=off autofocus>{{.DefaultInArgs}}</textarea>
         <a class="submit" href="javascript:;" onclick="onCallClick()">Call</a>
