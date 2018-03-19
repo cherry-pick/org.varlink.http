@@ -1,5 +1,5 @@
 all:
-	go build -o org.varlink.http
+	go build github.com/varlink/org.varlink.http
 .PHONY: all
 
 clean:

@@ -1,5 +1,5 @@
 Name:           org.varlink.http
-Version:        1
+Version:        2
 Release:        1%{?dist}
 Summary:        Varlink HTTP Proxy
 License:        ASL2.0
@@ -19,7 +19,10 @@ Varlink HTTP Proxy
 tar --strip-components=1 -x -f %{SOURCE0}
 
 %build
-go build -ldflags "-X main.datadir=%{_datadir}/%{name}" -o %{name}
+mkdir -p build/src/github.com/varlink
+ln -s $(pwd) build/src/github.com/varlink/%{name}
+export GOPATH=$(pwd)/build
+go build -ldflags "-X main.datadir=%{_datadir}/%{name}" github.com/varlink/%{name}
 
 %install
 install -d %{buildroot}%{_bindir}
@@ -51,5 +54,5 @@ install -m 0644 static/* -t %{buildroot}%{_datadir}/%{name}
 %{_datadir}/%{name}/varlink.css
 
 %changelog
-* Tue Aug 29 2017 <info@varlink.org> 1-1
-- org.varlink.http 1
+* Mon Mar 19 2018 <info@varlink.org> 1-1
+- org.varlink.http 2
