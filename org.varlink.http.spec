@@ -19,9 +19,11 @@ Varlink HTTP Proxy
 tar --strip-components=1 -x -f %{SOURCE0}
 
 %build
+# create Go workspace layout for our local vendor/ directory
 mkdir -p build/src/github.com/varlink
 ln -s $(pwd) build/src/github.com/varlink/%{name}
 export GOPATH=$(pwd)/build
+
 go build -ldflags "-X main.datadir=%{_datadir}/%{name}" github.com/varlink/%{name}
 
 %install
