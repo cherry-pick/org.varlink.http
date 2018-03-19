@@ -12,8 +12,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/varlink/org.varlink.http/varlink"
-	"github.com/varlink/org.varlink.http/varlink/idl"
+	"github.com/varlink/go/varlink"
+	"github.com/varlink/go/varlink/idl"
 )
 
 var datadir string = "static"

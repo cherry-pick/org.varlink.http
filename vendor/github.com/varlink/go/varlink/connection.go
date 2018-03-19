@@ -7,7 +7,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/varlink/org.varlink.http/varlink/idl"
+	"github.com/varlink/go/varlink/idl"
 )
 
 const ResolverAddress = "unix:/run/org.varlink.resolver"
