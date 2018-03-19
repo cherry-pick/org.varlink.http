@@ -7,7 +7,7 @@ URL:            https://github.com/varlink/%{name}
 Source0:        https://github.com/varlink/%{name}/archive/%{name}-%{version}.tar.gz
 BuildRequires:  systemd
 BuildRequires:  go
-Requires:       org.varlink.resolver
+Requires:       com.redhat.resolver
 
 %define debug_package %{nil}
 
