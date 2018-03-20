@@ -3,192 +3,123 @@ package varlink
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net"
 	"strings"
-
-	"github.com/varlink/go/varlink/idl"
 )
 
+// ResolverAddress is the well-known address of the varlink interface resolver,
+// it translates varlink interface names to varlink service addresses.
 const ResolverAddress = "unix:/run/org.varlink.resolver"
 
-type Connection interface {
-	SendMessage(message interface{}) error
-	ReceiveMessage(reply interface{}) error
-	Call(method string, args interface{}, reply interface{}) error
-	GetInterfaceDescription(name string) (*idl.IDL, error)
-	Close() error
-}
-
-type connection struct {
-	conn net.Conn
-}
-
-type CallArgs struct {
+type clientCall struct {
 	Method     string      `json:"method"`
 	Parameters interface{} `json:"parameters,omitempty"`
 	More       bool        `json:"more,omitempty"`
+	OneShot    bool        `json:"oneshot,omitempty"`
 }
 
-type CallReply struct {
-	Parameters *json.RawMessage `json:"parameters,omitempty"`
-	Error      *string          `json:"error,omitempty"`
-	Continues  bool             `json:"continues,omitempty"`
+type clientReply struct {
+	Parameters *json.RawMessage `json:"parameters"`
+	Continues  bool             `json:"continues"`
+	Error      string           `json:"error"`
 }
 
-type Error struct {
-	Name string
+// Connection is a connection from a client to a service.
+type Connection struct {
+	conn   net.Conn
+	reader *bufio.Reader
+	writer *bufio.Writer
 }
 
-func (e *Error) Error() string {
-	return e.Name
-}
-
-func (c *connection) SendMessage(message interface{}) error {
-	err := json.NewEncoder(c.conn).Encode(message)
+func (c *Connection) sendMessage(message *clientCall) error {
+	b, err := json.Marshal(message)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.conn.Write([]byte{0})
-	return err
-}
-
-func (c *connection) ReceiveMessage(reply interface{}) error {
-	out, err := bufio.NewReader(c.conn).ReadBytes(0)
+	b = append(b, 0)
+	_, err = c.writer.Write(b)
 	if err != nil {
-		return errors.New("error reading from connection: " + err.Error())
+		return err
 	}
 
-	return json.Unmarshal(out[:len(out)-1], reply)
+	return c.writer.Flush()
 }
 
-func (c *connection) Call(method string, parameters, reply_parameters interface{}) error {
-	if parameters == nil {
-		var empty struct{}
-		parameters = empty
+func (c *Connection) receiveMessage(message *clientReply) error {
+	out, err := c.reader.ReadBytes('\x00')
+	if err != nil {
+		return err
 	}
 
-	call := CallArgs{
+	return json.Unmarshal(out[:len(out)-1], message)
+}
+
+// Call sends a method call and returns the result of the call.
+func (c *Connection) Call(method string, parameters interface{}, result interface{}) error {
+	call := clientCall{
 		Method:     method,
 		Parameters: parameters,
 	}
 
-	err := c.SendMessage(&call)
+	err := c.sendMessage(&call)
 	if err != nil {
 		return err
 	}
 
-	var r CallReply
-	err = c.ReceiveMessage(&r)
+	var r clientReply
+	err = c.receiveMessage(&r)
 	if err != nil {
 		return err
 	}
 
-	if r.Error != nil {
-		return &Error{*r.Error}
+	if r.Error != "" {
+		return fmt.Errorf(r.Error)
 	}
 
-	err = json.Unmarshal(*r.Parameters, reply_parameters)
-	if err != nil {
-		return err
+	if result != nil {
+		return json.Unmarshal(*r.Parameters, result)
 	}
 
 	return nil
 }
 
-func (c *connection) GetInterfaceDescription(name string) (*idl.IDL, error) {
-	type GetInterfaceDescriptionArgs struct {
-		Name string `json:"interface"`
-	}
-	type GetInterfaceDescriptionReply struct {
-		InterfaceString string `json:"description"`
-	}
-
-	var reply GetInterfaceDescriptionReply
-	err := c.Call("org.varlink.service.GetInterfaceDescription", GetInterfaceDescriptionArgs{name}, &reply)
-	if err != nil {
-		return nil, err
-	}
-
-	iface, err := idl.New(reply.InterfaceString)
-	if err != nil {
-		return nil, err
-	}
-
-	return iface, nil
-}
-
-func (c *connection) Close() error {
+// Close terminates the connection.
+func (c *Connection) Close() error {
 	return c.conn.Close()
 }
 
-func Dial(address string) (Connection, error) {
+// NewConnection returns a new connection to the given address.
+func NewConnection(address string) (*Connection, error) {
 	var err error
 
-	c := &connection{}
+	words := strings.SplitN(address, ":", 2)
+	protocol := words[0]
+	addr := words[1]
 
-	path := strings.TrimPrefix(address, "unix:")
-	parms := strings.Split(path, ";")
+	// Ignore parameters after ';'
+	words = strings.SplitN(addr, ";", 2)
+	if words != nil {
+		addr = words[0]
+	}
 
-	c.conn, err = net.Dial("unix", parms[0])
+	switch protocol {
+	case "unix":
+		break
+
+	case "tcp":
+		break
+	}
+
+	c := Connection{}
+	c.conn, err = net.Dial(protocol, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return c, nil
-}
+	c.reader = bufio.NewReader(c.conn)
+	c.writer = bufio.NewWriter(c.conn)
 
-func DialInterface(iface string) (Connection, error) {
-	address, err := Resolve(iface)
-	if err != nil {
-		return nil, err
-	}
-
-	return Dial(address)
-}
-
-func Resolve(iface string) (string, error) {
-	type ResolveArgs struct {
-		Interface string `json:"interface"`
-	}
-	type ResolveReplyArgs struct {
-		Address string `json:"address"`
-	}
-
-	/* don't ask the resolver for itself */
-	if iface == "org.varlink.resolver" {
-		return ResolverAddress, nil
-	}
-
-	connection, err := Dial(ResolverAddress)
-	if err != nil {
-		return "", err
-	}
-	defer connection.Close()
-
-	var reply ResolveReplyArgs
-	err = connection.Call("org.varlink.resolver.Resolve", &ResolveArgs{iface}, &reply)
-	if err != nil {
-		return "", err
-	}
-
-	return reply.Address, nil
-}
-
-func Call(method string, parameters, reply_parameters interface{}) error {
-	parts := strings.Split(method, ".")
-	iface := strings.TrimSuffix(method, "."+parts[len(parts)-1])
-	address, err := Resolve(iface)
-	if err != nil {
-		return err
-	}
-
-	connection, err := Dial(address)
-	if err != nil {
-		return err
-	}
-	defer connection.Close()
-
-	return connection.Call(method, parameters, reply_parameters)
+	return &c, nil
 }
