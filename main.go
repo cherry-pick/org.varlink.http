@@ -19,65 +19,18 @@ import (
 var datadir string = "static"
 var templates = template.Must(template.ParseGlob(path.Join(datadir, "*.html")))
 
-type Error struct {
-	Name string
-}
-
-func (e *Error) Error() string {
-	return e.Name
-}
-
-func getInterfaceDescription(c *varlink.Connection, name string) (*idl.IDL, error) {
-	type GetInterfaceDescriptionArgs struct {
-		Name string `json:"interface"`
-	}
-	type GetInterfaceDescriptionReply struct {
-		InterfaceString string `json:"description"`
-	}
-
-	var reply GetInterfaceDescriptionReply
-	err := c.Call("org.varlink.service.GetInterfaceDescription", GetInterfaceDescriptionArgs{name}, &reply)
-	if err != nil {
-		return nil, err
-	}
-
-	iface, err := idl.New(reply.InterfaceString)
-	if err != nil {
-		return nil, err
-	}
-
-	return iface, nil
-}
-
-func Resolve(iface string) (string, error) {
-	type ResolveArgs struct {
-		Interface string `json:"interface"`
-	}
-	type ResolveReplyArgs struct {
-		Address string `json:"address"`
-	}
-
-	/* don't ask the resolver for itself */
-	if iface == "org.varlink.resolver" {
-		return varlink.ResolverAddress, nil
-	}
-
-	connection, err := varlink.NewConnection(varlink.ResolverAddress)
+func resolve(iface string) (string, error) {
+	r, err := varlink.NewResolver("")
 	if err != nil {
 		return "", err
 	}
-	defer connection.Close()
+	defer r.Close()
 
-	var reply ResolveReplyArgs
-	err = connection.Call("org.varlink.resolver.Resolve", &ResolveArgs{iface}, &reply)
-	if err != nil {
-		return "", err
-	}
-
-	return reply.Address, nil
+	return r.Resolve(iface)
 }
 
 func jsonError(writer http.ResponseWriter, message string, code int) {
+	type Error struct{ Name string }
 	writer.WriteHeader(code)
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -103,42 +56,42 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 
 	switch request.Method {
 	case http.MethodGet:
-		var interfaces struct {
-			Vendor     string   `json:"vendor"`
-			Product    string   `json:"product"`
-			Version    string   `json:"version"`
-			URL        string   `json:"url"`
-			Interfaces []string `json:"interfaces"`
+		type info struct {
+			Vendor     string
+			Product    string
+			Version    string
+			URL        string
+			Interfaces []string
 		}
-
-		connection, err := varlink.NewConnection(varlink.ResolverAddress)
+		r, err := varlink.NewResolver(varlink.ResolverAddress)
 		if err != nil {
 			http.Error(writer, "Not found", http.StatusNotFound)
 			return
 		}
-		defer connection.Close()
+		defer r.Close()
 
-		err = connection.Call("org.varlink.resolver.GetInfo", nil, &interfaces)
+		var i info
+		err = r.GetInfo(&i.Vendor, &i.Product, &i.Version, &i.URL, &i.Interfaces)
 		if err != nil {
-			http.Error(writer, "Not found", http.StatusNotFound)
+			http.Error(writer, "Not found"+err.Error(), http.StatusNotFound)
 			return
 		}
 
 		if strings.Contains(request.Header.Get("Accept"), "application/json") {
 			writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-			json.NewEncoder(writer).Encode(interfaces)
+			json.NewEncoder(writer).Encode(i)
 		} else {
 			writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-			templates.ExecuteTemplate(writer, "index.html", interfaces)
+			templates.ExecuteTemplate(writer, "index.html", i)
 		}
 
 	case http.MethodPost:
-		type CallArgs struct {
+		type callArgs struct {
 			Method     string      `json:"method"`
 			Parameters interface{} `json:"parameters,omitempty"`
 			More       bool        `json:"more,omitempty"`
 		}
-		var call CallArgs
+		var call callArgs
 		err := json.NewDecoder(request.Body).Decode(&call)
 		if err != nil {
 			jsonError(writer, err.Error(), http.StatusBadRequest)
@@ -147,9 +100,9 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 
 		parts := strings.Split(call.Method, ".")
 		iface := strings.TrimSuffix(call.Method, "."+parts[len(parts)-1])
-		address, err := Resolve(iface)
+		address, err := resolve(iface)
 		if err != nil {
-			if verr, ok := err.(*Error); ok {
+			if verr, ok := err.(*varlink.Error); ok {
 				if verr.Name == "org.varlink.resolver.InterfaceNotFound" {
 					writer.WriteHeader(http.StatusNotFound)
 					writer.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -161,15 +114,18 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		connection, err := varlink.NewConnection(address)
+		c, err := varlink.NewConnection(address)
 		if err != nil {
 			jsonError(writer, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		defer connection.Close()
+		defer c.Close()
 
-		var reply interface{}
-		err = connection.Call(call.Method, call.Parameters, &reply)
+		type callReply struct {
+			Parameters interface{} `json:"parameters,omitempty"`
+		}
+		var reply callReply
+		err = c.Call(call.Method, call.Parameters, &reply.Parameters)
 		if err != nil {
 			jsonError(writer, "Internal server error", http.StatusInternalServerError)
 			return
@@ -234,9 +190,9 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	parts := strings.Split(path, "/")
 	name := strings.TrimSuffix(parts[0], ".varlink")
 
-	address, err := Resolve(name)
+	address, err := resolve(name)
 	if err != nil {
-		if verr, ok := err.(*Error); ok {
+		if verr, ok := err.(*varlink.Error); ok {
 			if verr.Name == "org.varlink.resolver.InterfaceNotFound" {
 				http.Error(writer, "Interface does not exist: "+parts[0], http.StatusNotFound)
 				return
@@ -247,15 +203,22 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	connection, err := varlink.NewConnection(address)
+	c, err := varlink.NewConnection(address)
 	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())
 		return
 	}
-	defer connection.Close()
+	defer c.Close()
 
-	idl, err := getInterfaceDescription(connection, name)
+	desc, err := c.GetInterfaceDescription(name)
+	if err != nil {
+		http.Error(writer, "Internal server error", http.StatusInternalServerError)
+		log.Print(err.Error())
+		return
+	}
+
+	idl, err := idl.New(desc)
 	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())
