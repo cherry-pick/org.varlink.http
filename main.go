@@ -19,14 +19,19 @@ import (
 var datadir string = "static"
 var templates = template.Must(template.ParseGlob(path.Join(datadir, "*.html")))
 
-func resolve(iface string) (string, error) {
+func connect(iface string) (*varlink.Connection, error) {
 	r, err := varlink.NewResolver("")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer r.Close()
 
-	return r.Resolve(iface)
+	address, err := r.Resolve(iface)
+	if err != nil {
+		return nil, err
+	}
+
+	return varlink.NewConnection(address)
 }
 
 func jsonError(writer http.ResponseWriter, message string, code int) {
@@ -43,6 +48,7 @@ func serveStaticFile(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodGet:
 		// safe, because this function is only called for a few whitelisted file names
 		http.ServeFile(writer, request, path.Join(datadir, request.URL.Path))
+
 	default:
 		http.Error(writer, "Method not allowed on this URL", http.StatusMethodNotAllowed)
 	}
@@ -86,21 +92,21 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 		}
 
 	case http.MethodPost:
-		type callArgs struct {
-			Method     string      `json:"method"`
-			Parameters interface{} `json:"parameters,omitempty"`
-			More       bool        `json:"more,omitempty"`
+		type call struct {
+			Method     string
+			Parameters interface{}
 		}
-		var call callArgs
-		err := json.NewDecoder(request.Body).Decode(&call)
+		var in call
+		err := json.NewDecoder(request.Body).Decode(&in)
 		if err != nil {
 			jsonError(writer, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		parts := strings.Split(call.Method, ".")
-		iface := strings.TrimSuffix(call.Method, "."+parts[len(parts)-1])
-		address, err := resolve(iface)
+		parts := strings.Split(in.Method, ".")
+		iface := strings.TrimSuffix(in.Method, "."+parts[len(parts)-1])
+
+		c, err := connect(iface)
 		if err != nil {
 			if verr, ok := err.(*varlink.Error); ok {
 				if verr.Name == "org.varlink.resolver.InterfaceNotFound" {
@@ -113,26 +119,20 @@ func serveRoot(writer http.ResponseWriter, request *http.Request) {
 			jsonError(writer, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		c, err := varlink.NewConnection(address)
-		if err != nil {
-			jsonError(writer, "Internal server error", http.StatusInternalServerError)
-			return
-		}
 		defer c.Close()
 
-		type callReply struct {
+		type reply struct {
 			Parameters interface{} `json:"parameters,omitempty"`
 		}
-		var reply callReply
-		err = c.Call(call.Method, call.Parameters, &reply.Parameters)
+		var out reply
+		err = c.Call(in.Method, in.Parameters, &out.Parameters)
 		if err != nil {
 			jsonError(writer, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-		json.NewEncoder(writer).Encode(reply)
+		json.NewEncoder(writer).Encode(out)
 
 	default:
 		if strings.Contains(request.Header.Get("Accept"), "application/json") {
@@ -190,7 +190,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	parts := strings.Split(path, "/")
 	name := strings.TrimSuffix(parts[0], ".varlink")
 
-	address, err := resolve(name)
+	c, err := connect(name)
 	if err != nil {
 		if verr, ok := err.(*varlink.Error); ok {
 			if verr.Name == "org.varlink.resolver.InterfaceNotFound" {
@@ -198,13 +198,6 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 				return
 			}
 		}
-		http.Error(writer, "Internal server error", http.StatusInternalServerError)
-		log.Print(err.Error())
-		return
-	}
-
-	c, err := varlink.NewConnection(address)
-	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())
 		return
