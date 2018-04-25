@@ -13,6 +13,7 @@ const (
 	TypeInt
 	TypeFloat
 	TypeString
+	TypeObject
 	TypeArray
 	TypeMaybe
 	TypeMap
@@ -278,6 +279,9 @@ func (p *parser) readType() *Type {
 		if e == nil {
 			return nil
 		}
+		if e.Kind == TypeMaybe {
+			return nil
+		}
 		t = &Type{Kind: TypeMaybe, ElementType: e}
 
 	case '[':
@@ -318,6 +322,9 @@ func (p *parser) readType() *Type {
 
 			case "string":
 				t = &Type{Kind: TypeString}
+
+			case "object":
+				t = &Type{Kind: TypeObject}
 			}
 
 		} else if name := p.readTypeName(); name != "" {
