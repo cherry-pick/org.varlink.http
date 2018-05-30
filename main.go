@@ -170,11 +170,12 @@ func defaultValue(i *idl.IDL, t *idl.Type) interface{} {
 		return v
 
 	case idl.TypeAlias:
-		alias := i.Aliases[t.Alias]
-		if alias == nil {
-			return nil
+		for _, alias := range i.Aliases {
+			if alias.Name == t.Alias {
+				return defaultValue(i, alias.Type)
+			}
 		}
-		return defaultValue(i, alias.Type)
+		return nil
 	}
 
 	return nil
@@ -211,7 +212,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	idl, err := idl.New(desc)
+	i, err := idl.New(desc)
 	if err != nil {
 		http.Error(writer, "Internal server error", http.StatusInternalServerError)
 		log.Print(err.Error())
@@ -222,18 +223,25 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 	case 1:
 		if strings.HasSuffix(parts[0], ".varlink") {
 			writer.Header().Set("Content-Type", "text/plain")
-			io.WriteString(writer, idl.Description)
+			io.WriteString(writer, i.Description)
 		} else {
-			templates.ExecuteTemplate(writer, "interface.html", idl)
+			templates.ExecuteTemplate(writer, "interface.html", i)
 		}
 	case 2:
-		method := idl.Methods[parts[1]]
+		var method *idl.Method
+
+		for _, m := range i.Methods {
+			if m.Name == parts[1] {
+				method = m
+				break
+			}
+		}
 		if method == nil {
 			http.Error(writer, "Method does not exist: "+parts[1], http.StatusNotFound)
 			return
 		}
 
-		value, err := json.MarshalIndent(defaultValue(idl, method.In), "", "  ")
+		value, err := json.MarshalIndent(defaultValue(i, method.In), "", "  ")
 		if err != nil {
 			http.Error(writer, "Internal server error", http.StatusInternalServerError)
 			log.Print(err.Error())
@@ -241,7 +249,7 @@ func serveInterface(writer http.ResponseWriter, request *http.Request) {
 		}
 
 		templates.ExecuteTemplate(writer, "method.html", map[string]interface{}{
-			"Interface":     idl,
+			"Interface":     i,
 			"Method":        method,
 			"DefaultInArgs": string(value),
 		})
